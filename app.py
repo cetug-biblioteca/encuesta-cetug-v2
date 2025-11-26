@@ -14,8 +14,8 @@ app.secret_key = 'clave_secreta_2024'
 
 DB_FILE = 'participantes.db'
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
-REPO_OWNER = 'tu_usuario'  # Cambia por tu usuario de GitHub
-REPO_NAME = 'tu_repositorio'  # Cambia por el nombre de tu repo
+REPO_OWNER = os.environ.get('REPO_OWNER', 'tu_usuario')  # Cambia por tu usuario de GitHub
+REPO_NAME = os.environ.get('REPO_NAME', 'tu_repositorio')  # Cambia por el nombre de tu repo
 
 def init_db():
     """Inicializar la base de datos local"""
@@ -40,6 +40,7 @@ def init_db():
 def descargar_db_desde_github():
     """Descargar la base de datos desde GitHub al iniciar"""
     if not GITHUB_TOKEN:
+        print("⚠️  GITHUB_TOKEN no configurado - usando base de datos local")
         return
     
     try:
@@ -54,15 +55,23 @@ def descargar_db_desde_github():
             with open(DB_FILE, 'wb') as f:
                 f.write(db_content)
             print("✅ Base de datos descargada desde GitHub")
+        else:
+            print(f"⚠️  No se encontró BD en GitHub: {response.status_code}")
     except Exception as e:
-        print(f"⚠️ No se pudo descargar la BD: {e}")
+        print(f"⚠️  No se pudo descargar la BD: {e}")
 
 def subir_db_a_github():
     """Subir la base de datos actualizada a GitHub"""
     if not GITHUB_TOKEN:
+        print("⚠️  GITHUB_TOKEN no configurado - no se puede subir a GitHub")
         return
     
     try:
+        # Verificar si el archivo existe
+        if not os.path.exists(DB_FILE):
+            print("⚠️  No existe archivo de BD para subir")
+            return
+        
         # Leer archivo local
         with open(DB_FILE, 'rb') as f:
             content = f.read()
@@ -90,7 +99,7 @@ def subir_db_a_github():
         if response.status_code in [200, 201]:
             print("✅ Base de datos subida a GitHub")
         else:
-            print(f"❌ Error al subir: {response.text}")
+            print(f"❌ Error al subir: {response.status_code} - {response.text}")
             
     except Exception as e:
         print(f"❌ Error subiendo a GitHub: {e}")
@@ -104,6 +113,7 @@ def get_db_connection():
 @app.before_first_request
 def startup():
     """Ejecutar al iniciar la aplicación"""
+    print("🚀 Iniciando aplicación...")
     init_db()
     descargar_db_desde_github()
 
@@ -170,7 +180,7 @@ def obtener_participantes():
         participantes = conn.execute('SELECT * FROM participantes ORDER BY id DESC').fetchall()
         conn.close()
         
-        # Convertir a lista de diccionarios
+        # Convertir a lista de diccionarios en el formato que espera el frontend
         participantes_list = []
         for p in participantes:
             participantes_list.append({
@@ -179,8 +189,8 @@ def obtener_participantes():
                 'email': p['email'],
                 'telefono': p['telefono'],
                 'genero': p['genero'],
-                'empresa': p['empresa'],
-                'comentarios': p['comentarios'],
+                'empresa': p['empresa'] or '',
+                'comentarios': p['comentarios'] or '',
                 'fechaInscripcion': p['fecha_inscripcion'],
                 'timestamp': p['timestamp']
             })
@@ -218,8 +228,8 @@ def generar_excel():
             ws.cell(row=row, column=3, value=participante['email'])
             ws.cell(row=row, column=4, value=participante['telefono'])
             ws.cell(row=row, column=5, value=participante['genero'])
-            ws.cell(row=row, column=6, value=participante['empresa'])
-            ws.cell(row=row, column=7, value=participante['comentarios'])
+            ws.cell(row=row, column=6, value=participante['empresa'] or '')
+            ws.cell(row=row, column=7, value=participante['comentarios'] or '')
             ws.cell(row=row, column=8, value=participante['fecha_inscripcion'])
         
         # Ajustar anchos de columna
@@ -265,6 +275,27 @@ def eliminar_todos():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Ruta para verificar el estado de la base de datos
+@app.route('/estado', methods=['GET'])
+def estado_db():
+    try:
+        conn = get_db_connection()
+        count = conn.execute('SELECT COUNT(*) as total FROM participantes').fetchone()['total']
+        conn.close()
+        
+        return jsonify({
+            'estado': 'ok',
+            'total_participantes': count,
+            'bd_existe': os.path.exists(DB_FILE),
+            'github_token_configurado': bool(GITHUB_TOKEN)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
+    # Inicializar base de datos al iniciar
+    init_db()
+    descargar_db_desde_github()
+    
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False)
