@@ -110,10 +110,11 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# Inicialización al inicio (REEMPLAZA before_first_request)
-print("🚀 Iniciando aplicación...")
+# INICIALIZACIÓN - REEMPLAZA before_first_request
+print("🚀 Iniciando aplicación Flask...")
 init_db()
 descargar_db_desde_github()
+print("✅ Aplicación lista para recibir requests")
 
 @app.route('/')
 def home():
