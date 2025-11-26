@@ -2,8 +2,9 @@ from flask import Flask, render_template, request, jsonify, send_file
 import json
 import os
 from datetime import datetime
-import pandas as pd
 from io import BytesIO
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_2024'
@@ -77,15 +78,44 @@ def generar_excel():
         if not participantes:
             return jsonify({'error': 'No hay datos para exportar'}), 400
         
-        # Crear DataFrame
-        df = pd.DataFrame(participantes)
-        df = df.drop(['id', 'timestamp'], axis=1, errors='ignore')
+        # Crear Excel con openpyxl (sin pandas)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Participantes"
         
-        # Crear Excel en memoria
+        # Encabezados
+        headers = ['Nombre', 'Email', 'Teléfono', 'Género', 'Empresa', 'Comentarios', 'Fecha de Inscripción']
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal='center')
+        
+        # Datos
+        for row, participante in enumerate(participantes, 2):
+            ws.cell(row=row, column=1, value=participante['nombre'])
+            ws.cell(row=row, column=2, value=participante['email'])
+            ws.cell(row=row, column=3, value=participante['telefono'])
+            ws.cell(row=row, column=4, value=participante['genero'])
+            ws.cell(row=row, column=5, value=participante.get('empresa', ''))
+            ws.cell(row=row, column=6, value=participante.get('comentarios', ''))
+            ws.cell(row=row, column=7, value=participante['fechaInscripcion'])
+        
+        # Ajustar anchos de columna
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        # Guardar en memoria
         output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name='Participantes', index=False)
-        
+        wb.save(output)
         output.seek(0)
         
         return send_file(
