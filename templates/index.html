@@ -386,7 +386,8 @@
     <div class="container">
         <header>
             <div class="logo-container">
-                <img src="{{ url_for('static', filename='image.png') }}" alt="CENTRO DE ESTUDIOS TECNOLÓGICOS Y UNIVERSITARIOS" class="logo">
+                <!-- Imagen corregida - usa ruta absoluta -->
+                <img src="/static/image.png" alt="CENTRO DE ESTUDIOS TECNOLÓGICOS Y UNIVERSITARIOS" class="logo">
             </div>
             <div class="institution">Centro de Estudios Tecnológicos y Universitarios del Golfo, A.C.</div>
             <h1>Escuela Superior de Medicina Orizaba, Ver.</h1>
@@ -397,7 +398,7 @@
         <div class="admin-panel">
             <h3>Acceso Administrativo</h3>
             <div class="admin-login">
-                <input type="password" id="admin123-password" placeholder="Contraseña de administrador">
+                <input type="password" id="admin-password" placeholder="Contraseña de administrador">
                 <button id="btn-admin-login" class="btn">Acceder</button>
                 <button id="btn-admin-logout" class="btn btn-danger" style="display: none;">Cerrar Sesión</button>
             </div>
@@ -477,7 +478,6 @@
             
             <div class="admin-controls">
                 <button id="btn-generar-excel" class="btn btn-success">Generar Reporte Excel</button>
-                <button id="btn-respaldar-excel" class="btn">Descargar Respaldo Excel</button>
                 <button id="btn-actualizar-lista" class="btn">Actualizar Lista</button>
                 <button id="btn-eliminar-todos" class="btn btn-danger">Eliminar Todos</button>
             </div>
@@ -530,9 +530,6 @@
         </footer>
     </div>
 
-    <!-- Script para generar Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
     <script>
         // Variables globales
         let participantes = [];
@@ -549,11 +546,10 @@
         const cuerpoTabla = document.getElementById('cuerpo-tabla');
         const emptyState = document.getElementById('empty-state');
         const btnGenerarExcel = document.getElementById('btn-generar-excel');
-        const btnRespaldarExcel = document.getElementById('btn-respaldar-excel');
         const btnActualizarLista = document.getElementById('btn-actualizar-lista');
         const btnEliminarTodos = document.getElementById('btn-eliminar-todos');
         const btnSalir = document.getElementById('btn-salir');
-        const adminPasswordInput = document.getElementById('admin123-password');
+        const adminPasswordInput = document.getElementById('admin-password');
         const btnAdminLogin = document.getElementById('btn-admin-login');
         const btnAdminLogout = document.getElementById('btn-admin-logout');
         const adminMessage = document.getElementById('admin-message');
@@ -755,24 +751,6 @@
             totalOtros.textContent = otros;
         }
         
-        // Función para generar datos en formato Excel (local)
-        function generarExcelLocal(datos, nombreArchivo) {
-            const datosExcel = datos.map(p => ({
-                'Nombre': p.nombre,
-                'Email': p.email,
-                'Teléfono': p.telefono,
-                'Género': p.genero,
-                'Empresa': p.empresa || '',
-                'Comentarios': p.comentarios || '',
-                'Fecha de Inscripción': p.fechaInscripcion
-            }));
-            
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(datosExcel);
-            XLSX.utils.book_append_sheet(wb, ws, 'Participantes');
-            XLSX.writeFile(wb, nombreArchivo);
-        }
-        
         // Función para generar reporte en Excel
         btnGenerarExcel.addEventListener('click', async function() {
             if (participantes.length === 0) {
@@ -782,19 +760,8 @@
             
             const exito = await generarExcelFlask();
             if (!exito) {
-                // Fallback a generación local
-                generarExcelLocal(participantes, `Reporte_Participantes_${new Date().toISOString().split('T')[0]}.xlsx`);
+                alert('Error al generar el reporte Excel');
             }
-        });
-        
-        // Función para respaldar datos en Excel
-        btnRespaldarExcel.addEventListener('click', function() {
-            if (participantes.length === 0) {
-                alert('No hay datos para respaldar.');
-                return;
-            }
-            
-            generarExcelLocal(participantes, `Respaldo_Completo_${new Date().toISOString().split('T')[0]}.xlsx`);
         });
         
         // Función para actualizar la lista manualmente
