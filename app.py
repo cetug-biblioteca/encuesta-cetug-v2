@@ -14,8 +14,8 @@ app.secret_key = 'clave_secreta_2024'
 
 DB_FILE = 'participantes.db'
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
-REPO_OWNER = os.environ.get('REPO_OWNER', 'tu_usuario')  # Cambia por tu usuario de GitHub
-REPO_NAME = os.environ.get('REPO_NAME', 'tu_repositorio')  # Cambia por el nombre de tu repo
+REPO_OWNER = os.environ.get('REPO_OWNER', 'tu_usuario')
+REPO_NAME = os.environ.get('REPO_NAME', 'tu_repositorio')
 
 def init_db():
     """Inicializar la base de datos local"""
@@ -110,12 +110,10 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-@app.before_first_request
-def startup():
-    """Ejecutar al iniciar la aplicación"""
-    print("🚀 Iniciando aplicación...")
-    init_db()
-    descargar_db_desde_github()
+# Inicialización al inicio (REEMPLAZA before_first_request)
+print("🚀 Iniciando aplicación...")
+init_db()
+descargar_db_desde_github()
 
 @app.route('/')
 def home():
@@ -293,9 +291,5 @@ def estado_db():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Inicializar base de datos al iniciar
-    init_db()
-    descargar_db_desde_github()
-    
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port, debug=False)
